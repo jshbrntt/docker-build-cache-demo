@@ -1,0 +1,106 @@
+services:
+  cicd-docker-server:
+    image: docker:dind
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - ./daemon.json:/etc/docker/daemon.json
+      - cicd-certs-ca:/certs/ca
+      - cicd-certs-client:/certs/client
+      - cicd-docker-server-data:/var/lib/docker
+      - cicd-docker-sock:/var/run
+    networks:
+      registry:
+      cicd:
+        aliases:
+          - docker
+
+  cicd-docker-client:
+    image: docker:latest
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+      DOCKER_HOST: unix:///var/run/docker.sock
+    working_dir: /root/wip
+    volumes:
+      - .:/root/wip
+      - cicd-certs-client:/certs/client
+      - cicd-docker-client-data:/var/lib/docker
+      - cicd-docker-sock:/var/run
+    depends_on:
+      - nexus
+      - cicd-docker-server
+    networks:
+      - registry
+      - cicd
+
+  developer-docker-server:
+    image: docker:dind
+    privileged: true
+    # command:
+    #   - --host=unix:///var/run/docker.sock
+    #   - --tlsverify
+    #   - --tlscacert
+    #   - /certs/server/ca.pem
+    #   - --tlscert
+    #   - /certs/server/cert.pem
+    #   - --tlskey
+    #   - /certs/server/key.pem
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - ./daemon.json:/etc/docker/daemon.json
+      - developer-certs-ca:/certs/ca
+      - developer-certs-client:/certs/client
+      - developer-docker-server-data:/var/lib/docker
+      - developer-docker-sock:/var/run
+    networks:
+      registry:
+      developer:
+        aliases:
+          - docker
+
+  developer-docker-client:
+    image: docker:latest
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+      DOCKER_HOST: unix:///var/run/docker.sock
+    working_dir: /root/wip
+    volumes:
+      - .:/root/wip
+      - developer-certs-client:/certs/client
+      - developer-docker-client-data:/var/lib/docker
+      - developer-docker-sock:/var/run
+    depends_on:
+      - nexus
+      - developer-docker-server
+    networks:
+      - registry
+      - developer
+
+  nexus:
+    image: registry:2
+    volumes:
+      - nexus-registry-data:/var/lib/registry
+    networks:
+      - registry
+
+volumes:
+  cicd-certs-ca:
+  cicd-certs-client:
+  cicd-docker-client-data:
+  cicd-docker-server-data:
+  cicd-docker-sock:
+  developer-certs-ca:
+  developer-certs-client:
+  developer-docker-client-data:
+  developer-docker-server-data:
+  developer-docker-sock:
+  nexus-registry-data:
+
+networks:
+  registry:
+  cicd:
+  developer:
